@@ -1,0 +1,10 @@
+*.py[cod]
+desktop.ini
+tools/
+docs/
+logs/
+.venv/
+venv/
+assets
+Generar arbol de archivos.bat
+AGENTS.md

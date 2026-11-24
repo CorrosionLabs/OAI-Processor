@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="{{ translations['app.meta_description'] }}">
+    <title>OAI-Processor</title>
+    <link rel="icon" type="image/svg+xml" href="/static/img/corrosion-labs-icon.svg">
+    <link rel="stylesheet" href="/static/css/app.css?v=3">
+    <script src="/static/js/app.js" defer></script>
+</head>
+<body>
+    <div id="ui-text" data-messages='{{ translations | tojson }}' hidden></div>
+    <header class="site-header">
+        <div class="site-header-content">
+            <div class="brand">
+                <img class="brand-logo" src="/static/img/corrosion-labs-logo.svg" alt="Corrosion Labs">
+                <div class="brand-copy">
+                    <span class="brand-product">OAI-Processor</span>
+                    <small class="brand-subtitle">{{ translations['app.meta_description'] }}</small>
+                </div>
+            </div>
+            <div class="header-actions">
+                <nav class="main-nav" aria-label="{{ translations['nav.aria_label'] }}">
+                    <button type="button" data-page-target="conectar" aria-current="page">{{ translations['nav.connect'] }}</button>
+                    <button type="button" data-page-target="procesar">{{ translations['nav.process'] }}</button>
+                    <button type="button" data-page-target="exportar">{{ translations['nav.export'] }}</button>
+                    <button type="button" data-page-target="limpiar">{{ translations['nav.clean'] }}</button>
+                </nav>
+                <button id="live-help-toggle" class="live-help-toggle" type="button" aria-pressed="false"
+                    aria-label="{{ translations['help.live_help_toggle'] }}">?</button>
+                <div class="language-menu">
+                    <button id="language-menu-toggle" class="language-menu-toggle" type="button"
+                        aria-expanded="false" aria-controls="language-menu-options"
+                        aria-label="{{ translations['language.select'] }}">{{ translations['language.name'] }}</button>
+                    <div id="language-menu-options" class="language-menu-options" hidden>
+                        {% for option in languages %}
+                        <a href="/?lang={{ option.code }}" hreflang="{{ option.code }}"
+                            {% if option.code == language %}aria-current="true"{% endif %}>{{ option.name }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+                <button id="about-logo" class="about-logo" type="button" aria-label="Corrosion Labs">
+                    <img src="/static/img/corrosion-labs-icon.svg" alt="">
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div id="about-modal" class="modal" hidden>
+        <div class="modal-backdrop" data-about-close></div>
+
+        <section class="modal-dialog about-modal-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="about-modal-title"
+            aria-describedby="about-modal-description">
+
+            <div class="about-modal-layout">
+
+                <div class="about-modal-visual">
+                    <img class="about-modal-logo"
+                        src="/static/img/corrosion-labs-logo.svg"
+                        alt="Corrosion Labs">
+                </div>
+
+                <div class="about-modal-content">
+
+                    <header class="about-modal-header">
+                        <div>
+                            <h2 id="about-modal-title">OAI-Processor</h2>
+                            <p id="about-version"></p>
+                        </div>
+
+                        <button id="about-close"
+                            class="about-close"
+                            type="button"
+                            aria-label="{{ translations['about.close'] }}">×</button>
+                    </header>
+
+                    <p id="about-modal-description"></p>
+
+                    <div id="about-links"></div>
+
+                    <p class="about-modal-lab">Corrosion Labs</p>
+
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <main>
+        <div class="section-grid">
+            <section id="conectar" class="panel module-panel" aria-labelledby="connect-title">
+                <h2 id="connect-title">{{ translations['connect.title'] }}</h2>
+                <p class="panel-summary">{{ translations['connect.summary'] }}</p>
+                <button id="choose-backup" class="primary-action module-primary-action" type="button" data-help="{{ translations['help.connect_select_folder'] }}">{{ translations['connect.select_folder'] }}</button>
+                <dl id="connection-result" class="system-details"{% if not backup_root %} hidden{% endif %}>
+                    <div><dt>{{ translations['connect.backup_folder'] }}</dt><dd id="selected-path">{{ backup_root or "" }}</dd></div>
+                    <div><dt>{{ translations['connect.work_folder'] }}</dt><dd id="process-path">{{ process_root or "" }}</dd></div>
+                </dl>
+                <p id="status" class="status" data-state="{{ 'complete' if backup_root else 'pending' }}" role="status" aria-live="polite">{{ translations['connect.connected'] if backup_root else translations['connect.no_folder'] }}</p>
+            </section>
+
+            <section id="procesar" class="panel module-panel" aria-labelledby="process-title" hidden>
+                <h2 id="process-title">{{ translations['process.title'] }}</h2>
+                <p id="process-summary" class="panel-summary">{{ translations['process.summary'] }}</p>
+                <button id="analyze-backup" class="primary-action module-primary-action" type="button">{{ translations['process.analyze'] }}</button>
+                <section id="process-project-selection" class="export-options" aria-labelledby="process-project-selection-title" hidden>
+                    <div>
+                        <h3 id="process-project-selection-title">{{ translations['process.projects'] }}</h3>
+                        <div class="export-profile-actions">
+                            <button id="process-project-select-all" type="button">{{ translations['process.select_all'] }}</button>
+                            <button id="process-project-select-none" type="button">{{ translations['process.select_none'] }}</button>
+                        </div>
+                        <div id="process-project-list"></div>
+                        <p id="process-project-loading-status" class="status" data-state="pending" role="status" aria-live="polite">{{ translations['process.loading_projects'] }}</p>
+                    </div>
+                </section>
+                <div class="process-action-row">
+                    <button id="start-process" class="primary-action module-primary-action" type="button" data-help="{{ translations['help.process_check'] }}">{{ translations['process.start'] }}</button>
+                    <span id="process-action-result" hidden></span>
+                </div>
+                <section id="process-progress" class="process-progress" aria-label="{{ translations['process.title'] }}">
+                    <div class="process-progress-heading">
+                        <strong id="process-phase">{{ translations['process.initial_ready'] }}</strong>
+                        <span id="process-percent">0 %</span>
+                    </div>
+                    <progress id="process-progress-bar" max="100" value="0">0 %</progress>
+                    <ol class="process-stages" aria-label="{{ translations['process.title'] }}">
+                        <li data-process-stage="analysis" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['process.stage_analysis'] }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-process-stage="conversations" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['process.stage_conversations'] }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-process-stage="resources" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['process.stage_resources'] }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-process-stage="indexes" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['process.stage_indexes'] }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                    </ol>
+                    <div class="process-current">
+                        <p id="process-current-item"><span id="process-current-label">{{ translations['process.item'] }}</span>: <strong id="process-current-value">—</strong></p>
+                        <p id="process-current-project" hidden>{{ translations['process.project'] }}: <strong id="process-project"></strong></p>
+                    </div>
+                    <dl class="process-counters">
+                        <div><dt>{{ translations['process.counter_conversations'] }}</dt><dd id="process-conversations">0 / 0</dd></div>
+                        <div><dt>{{ translations['process.counter_images'] }}</dt><dd id="process-images">0</dd></div>
+                        <div><dt>{{ translations['process.counter_audio'] }}</dt><dd id="process-audio">0</dd></div>
+                        <div><dt>{{ translations['process.counter_video'] }}</dt><dd id="process-video">0</dd></div>
+                        <div><dt>{{ translations['process.counter_pdf'] }}</dt><dd id="process-pdf">0</dd></div>
+                        <div><dt>{{ translations['process.counter_files'] }}</dt><dd id="process-files">0</dd></div>
+                        <div><dt>{{ translations['process.counter_copied'] }}</dt><dd id="process-copied-resources">0</dd></div>
+                        <div><dt>{{ translations['process.counter_missing'] }}</dt><dd id="process-missing-resources">0</dd></div>
+                    </dl>
+                    <div class="process-times" aria-label="{{ translations['process.title'] }}">
+                        <span>{{ translations['process.total'] }} <strong id="process-total-elapsed">00:00:00</strong></span>
+                        <span>{{ translations['process.phase'] }} <strong id="process-phase-elapsed">00:00:00</strong></span>
+                        <span id="process-phase-times">—</span>
+                    </div>
+                </section>
+                <p id="process-status" class="status" data-state="pending" role="status" aria-live="polite">{{ translations['process.initial_ready'] }}</p>
+            </section>
+
+            <section id="exportar" class="panel module-panel" aria-labelledby="export-title" hidden>
+                <h2 id="export-title">{{ translations['export.title'] }}</h2>
+                <p class="panel-summary">{{ translations['export.summary'] }}</p>
+                <div role="tablist" aria-label="{{ translations['export.title'] }}">
+                    <button id="export-tab-obsidian" type="button" role="tab" aria-selected="true">{{ translations['export.obsidian'] }}</button>
+                    <button id="export-tab-html" type="button" role="tab" aria-selected="false">{{ translations['export.html'] }}</button>
+                </div>
+                <div id="export-panel-obsidian" role="tabpanel" aria-labelledby="export-tab-obsidian">
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.destination'] }}</h3>
+                            <button id="choose-obsidian-vault" class="primary-action module-primary-action" type="button" data-help="{{ translations['help.export_select_vault'] }}">{{ translations['export.select_vault'] }}</button>
+                            <dl id="vault-result" class="system-details"{% if not vault_path %} hidden{% endif %}>
+                                <div>
+                                    <dd id="obsidian-vault-display">{{ vault_path or "" }}</dd>
+                                </div>
+                            </dl>
+                            <input id="obsidian-vault-path" type="hidden" value="{{ vault_path or '' }}">
+                            <div class="vault-write-mode">
+                                <label data-help="{{ translations['help.export_add'] }}">
+                                    <input id="vault-write-add" type="radio" name="vault-write-mode" value="add" checked>
+                                    <span>{{ translations['export.add'] }}</span>
+                                </label>
+                                <label data-help="{{ translations['help.export_overwrite'] }}">
+                                    <input id="vault-write-overwrite" type="radio" name="vault-write-mode" value="overwrite">
+                                    <span>{{ translations['export.overwrite'] }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.previous_backup'] }}</h3>
+                            <label class="export-checkbox">
+                                <input id="export-backup-before" type="checkbox">
+                                <span>{{ translations['export.backup_before'] }}</span>
+                            </label>
+                            <button id="choose-backup-folder" class="primary-action module-primary-action" type="button">{{ translations['connect.select_folder'] }}</button>
+                            <dl id="backup-folder-result" class="system-details" hidden>
+                                <div><dd id="backup-folder-display"></dd></div>
+                            </dl>
+                            <input id="backup-folder" type="hidden" value="">
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.resources_heading'] }}</h3>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_optimize'] }}">
+                                <input id="export-optimize" type="checkbox">
+                                <span>{{ translations['export.optimize'] }}</span>
+                            </label>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_preserve_png'] }}">
+                                <input id="export-preserve-transparent-png" type="checkbox">
+                                <span>{{ translations['export.preserve_png'] }}</span>
+                            </label>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_convert_m4a'] }}">
+                                <input id="export-convert-m4a" type="checkbox">
+                                <span>{{ translations['export.convert_m4a'] }}</span>
+                            </label>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_include_audio'] }}">
+                                <input id="export-include-conversation-audio" type="checkbox">
+                                <span>{{ translations['export.include_audio'] }}</span>
+                            </label>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_include_user_attachments'] }}">
+                                <input id="export-include-user-attachments" type="checkbox">
+                                <span>{{ translations['export.include_user_attachments'] }}</span>
+                            </label>
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.content_heading'] }}</h3>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_project_tag'] }}">
+                                <input id="export-project-tag" type="checkbox">
+                                <span>{{ translations['export.project_tag'] }}</span>
+                            </label>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_custom_roles'] }}">
+                                <input id="export-custom-roles" type="checkbox">
+                                <span>{{ translations['export.custom_roles'] }}</span>
+                            </label>
+                            <div class="export-role-fields">
+                                <label for="export-user-role" data-help="{{ translations['help.export_user_role'] }}">{{ translations['export.user_role'] }}</label>
+                                <input id="export-user-role" type="text" placeholder="{{ translations['export.user_role'] }}" disabled>
+                                <label for="export-assistant-role" data-help="{{ translations['help.export_assistant_role'] }}">{{ translations['export.assistant_role'] }}</label>
+                                <input id="export-assistant-role" type="text" placeholder="{{ translations['export.assistant_role'] }}" disabled>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.profile_heading'] }}</h3>
+                            <div class="export-profile-actions">
+                                <button id="save-export-profile" class="primary-action" type="button" data-help="{{ translations['help.export_save_profile'] }}">{{ translations['export.save_profile'] }}</button>
+                                <button id="load-export-profile" class="primary-action" type="button" data-help="{{ translations['help.export_load_profile'] }}">{{ translations['export.load_profile'] }}</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <div id="export-panel-html" role="tabpanel" aria-labelledby="export-tab-html" hidden>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.destination'] }}</h3>
+                            <button id="choose-html-folder" class="primary-action module-primary-action" type="button">{{ translations['connect.select_folder'] }}</button>
+                            <dl id="html-folder-result" class="system-details"{% if not html_path %} hidden{% endif %}>
+                                <div>
+                                    <dd id="html-folder-display">{{ html_path or "" }}</dd>
+                                </div>
+                            </dl>
+                            <input id="html-folder-path" type="hidden" value="{{ html_path or '' }}">
+                            <div class="vault-write-mode">
+                                <label>
+                                    <input id="html-vault-write-add" type="radio" name="html-vault-write-mode" value="add" checked>
+                                    <span>{{ translations['export.add'] }}</span>
+                                </label>
+                                <label>
+                                    <input id="html-vault-write-overwrite" type="radio" name="html-vault-write-mode" value="overwrite">
+                                    <span>{{ translations['export.overwrite'] }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.previous_backup'] }}</h3>
+                            <label class="export-checkbox">
+                                <input id="html-export-backup-before" type="checkbox">
+                                <span>{{ translations['export.backup_before'] }}</span>
+                            </label>
+                            <button id="html-choose-backup-folder" class="primary-action module-primary-action" type="button">{{ translations['connect.select_folder'] }}</button>
+                            <dl id="html-backup-folder-result" class="system-details" hidden>
+                                <div><dd id="html-backup-folder-display"></dd></div>
+                            </dl>
+                            <input id="html-backup-folder" type="hidden" value="">
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.resources_heading'] }}</h3>
+                            <label class="export-checkbox">
+                                <input id="html-export-optimize" type="checkbox">
+                                <span>{{ translations['export.optimize'] }}</span>
+                            </label>
+                            <label class="export-checkbox">
+                                <input id="html-export-preserve-transparent-png" type="checkbox">
+                                <span>{{ translations['export.preserve_png'] }}</span>
+                            </label>
+                            <label class="export-checkbox">
+                                <input id="html-export-convert-m4a" type="checkbox">
+                                <span>{{ translations['export.convert_m4a'] }}</span>
+                            </label>
+                            <label class="export-checkbox">
+                                <input id="html-export-include-conversation-audio" type="checkbox">
+                                <span>{{ translations['export.include_audio'] }}</span>
+                            </label>
+                            <label class="export-checkbox" data-help="{{ translations['help.export_include_user_attachments'] }}">
+                                <input id="html-export-include-user-attachments" type="checkbox">
+                                <span>{{ translations['export.include_user_attachments'] }}</span>
+                            </label>
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.content_heading'] }}</h3>
+                            <label class="export-checkbox">
+                                <input id="html-export-project-tag" type="checkbox">
+                                <span>{{ translations['export.project_tag'] }}</span>
+                            </label>
+                            <label class="export-checkbox">
+                                <input id="html-export-custom-roles" type="checkbox">
+                                <span>{{ translations['export.custom_roles'] }}</span>
+                            </label>
+                            <div class="export-role-fields">
+                                <label for="html-export-user-role">{{ translations['export.user_role'] }}</label>
+                                <input id="html-export-user-role" type="text" placeholder="{{ translations['export.user_role'] }}" disabled>
+                                <label for="html-export-assistant-role">{{ translations['export.assistant_role'] }}</label>
+                                <input id="html-export-assistant-role" type="text" placeholder="{{ translations['export.assistant_role'] }}" disabled>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="export-options">
+                        <div>
+                            <h3>{{ translations['export.profile_heading'] }}</h3>
+                            <div class="export-profile-actions">
+                                <button id="html-save-export-profile" class="primary-action" type="button">{{ translations['export.save_profile'] }}</button>
+                                <button id="html-load-export-profile" class="primary-action" type="button">{{ translations['export.load_profile'] }}</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+                <button id="start-export" class="primary-action module-primary-action" type="button" data-help="{{ translations['help.export_start'] }}">{{ translations['export.start'] }}</button>
+                <section class="process-progress" aria-label="{{ translations['export.title'] }}" hidden>
+                    <ol class="process-stages" aria-label="{{ translations['export.title'] }}">
+                        <li data-export-stage="backup" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['export.stage_backup'] }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-export-stage="prepare" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['export.stage_prepare'] | replace('1. ', '') }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-export-stage="resources" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['export.stage_resources'] | replace('2. ', '') }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-export-stage="obsidian" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['export.stage_obsidian'] | replace('3. ', '') }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-export-stage="validate" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['export.stage_validate'] | replace('4. ', '') }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                        <li data-export-stage="vault" data-state="pending">
+                            <span class="stage-indicator" aria-hidden="true"></span>
+                            <span>{{ translations['export.stage_vault'] | replace('5. ', '') }}</span>
+                            <strong class="stage-status">{{ translations['process.pending'] }}</strong>
+                        </li>
+                    </ol>
+                    <div class="process-current">
+                        <p>{{ translations['export.current_item'] }}: <strong id="export-current-item">—</strong></p>
+                        <p id="export-current-project" hidden>{{ translations['export.project'] }}: <strong id="export-project"></strong></p>
+                    </div>
+                    <dl class="process-counters">
+                        <div><dt>{{ translations['export.counter_resources'] }}</dt><dd id="export-resources">0 / 0</dd></div>
+                        <div><dt>{{ translations['export.counter_conversions'] }}</dt><dd id="export-conversions">0</dd></div>
+                        <div><dt>{{ translations['export.counter_markdown'] }}</dt><dd id="export-markdown">0</dd></div>
+                        <div><dt>{{ translations['export.counter_errors'] }}</dt><dd id="export-errors">0</dd></div>
+                    </dl>
+                </section>
+                <dl id="export-result" class="system-details" hidden>
+                    <div><dt>{{ translations['export.destination'] }}</dt><dd id="export-output-path"></dd></div>
+                    <div><dt>{{ translations['export.result'] }}</dt><dd id="export-result-summary"></dd></div>
+                </dl>
+                <p id="export-status" class="status" data-state="pending" role="status" aria-live="polite">{{ translations['export.ready'] }}</p>
+            </section>
+
+            <section id="limpiar" class="panel module-panel" aria-labelledby="clean-title" hidden>
+                <h2 id="clean-title">{{ translations['clean.title'] }}</h2>
+                <p class="panel-summary">{{ translations['clean.summary'] }}</p>
+                <label class="export-checkbox" data-help="{{ translations['help.clean_include_exports'] }}">
+                    <input id="clean-delete-exports" type="checkbox">
+                    <span>{{ translations['clean.include_exports'] }}</span>
+                </label>
+                <button id="start-clean" class="primary-action module-primary-action" type="button" data-help="{{ translations['help.clean_start'] }}">{{ translations['clean.start'] }}</button>
+            </section>
+        </div>
+
+        <dialog id="clean-modal" aria-labelledby="clean-modal-title" aria-describedby="clean-modal-description">
+            <h2 id="clean-modal-title">{{ translations['clean.modal_title'] }}</h2>
+            <p id="clean-modal-description">{{ translations['clean.modal_description'] }}</p>
+            <ul>
+                <li>process/</li>
+                <li>oai_processor.sqlite3</li>
+            </ul>
+            <p>{{ translations['clean.exports_optional'] }}</p>
+            <p>{{ translations['clean.original_preserved'] }}</p>
+            <p>{{ translations['clean.hold'] }}</p>
+            <progress id="clean-confirm-progress" max="4" value="0" aria-label="{{ translations['clean.progress_label'] }}"></progress>
+            <p id="clean-confirm-status" role="status" aria-live="polite">{{ translations['clean.waiting'] }}</p>
+            <button id="cancel-clean" type="button">{{ translations['clean.cancel'] }}</button>
+        </dialog>
+        <dialog id="obsidian-assisted-modal" aria-labelledby="obsidian-assisted-title" aria-describedby="obsidian-assisted-description">
+            <h2 id="obsidian-assisted-title">{{ translations.get('export.obsidian_assisted_title', 'Método de exportación a Obsidian') }}</h2>
+            <p id="obsidian-assisted-warning">{{ translations.get('export.obsidian_assisted_warning', 'Las exportaciones grandes pueden saturar Obsidian y afectar temporalmente a su rendimiento.') }}</p>
+            <div id="obsidian-assisted-description">
+                <p><strong>{{ translations.get('export.obsidian_export_normal', 'Exportación normal:') }}</strong> {{ translations.get('export.obsidian_export_normal_description', 'utiliza el procedimiento actual.') }}</p>
+                <p><strong>{{ translations.get('export.obsidian_export_assisted', 'Exportación asistida:') }}</strong> {{ translations.get('export.obsidian_export_assisted_description', 'copia los proyectos secuencialmente, esperando a que Obsidian termine su actividad de indexación entre proyectos.') }}</p>
+            </div>
+            <p>
+                {{ translations.get('export.obsidian_assisted_plugin_intro', 'Instala y activa el plugin') }}
+                <a href="https://community.obsidian.md/plugins/obsidian-local-rest-api" target="_blank" rel="noopener noreferrer">{{ translations.get('export.obsidian_assisted_plugin_name', 'Local REST API') }}</a>.
+            </p>
+            <p>{{ translations.get('export.obsidian_assisted_instruction', 'Mantén Obsidian abierto con la bóveda de destino cargada y el plugin Local REST API activado.') }}</p>
+            <label for="obsidian-assisted-api-key">{{ translations.get('export.obsidian_assisted_api_key', 'API Key') }}</label>
+            <p>{{ translations.get('export.obsidian_assisted_api_key_hint', 'La API Key solo es necesaria para la exportación asistida.') }}</p>
+            <input id="obsidian-assisted-api-key" type="password">
+            <label class="export-checkbox">
+                <input id="obsidian-assisted-remember" type="checkbox">
+                <span>{{ translations.get('export.obsidian_assisted_remember', 'Recordar') }}</span>
+            </label>
+            <button id="obsidian-export-normal" type="button">{{ translations.get('export.obsidian_export_normal', 'Exportación normal') }}</button>
+            <button id="obsidian-assisted-confirm" class="primary-action" type="button">{{ translations.get('export.obsidian_export_assisted', 'Exportación asistida') }}</button>
+            <button id="obsidian-assisted-cancel" type="button">{{ translations.get('export.obsidian_assisted_cancel', 'Cancelar') }}</button>
+        </dialog>
+        <dialog id="obsidian-remember-warning-modal" aria-labelledby="obsidian-remember-warning-title" aria-describedby="obsidian-remember-warning-description">
+            <h2 id="obsidian-remember-warning-title">{{ translations.get('export.obsidian_remember_warning_title', 'Aviso de seguridad') }}</h2>
+            <p id="obsidian-remember-warning-description">{{ translations.get('export.obsidian_remember_warning', 'La API Key se guardará localmente en OAI_Backup/settings.json. Estará ofuscada, pero no cifrada. Cualquier persona con acceso al archivo podría recuperarla') }}</p>
+            <button id="obsidian-remember-accept" class="primary-action" type="button">{{ translations.get('export.obsidian_remember_accept', 'Aceptar') }}</button>
+            <button id="obsidian-remember-cancel" type="button">{{ translations.get('export.obsidian_remember_cancel', 'Cancelar') }}</button>
+        </dialog>
+        <dialog id="vault-link-update-modal" aria-labelledby="vault-link-update-title" aria-describedby="vault-link-update-description">
+            <h2 id="vault-link-update-title">{{ translations['vault_changes.title'] }}</h2>
+            <p id="vault-link-update-description">{{ translations['vault_changes.description'] }}</p>
+            <p id="vault-link-update-summary">{{ translations['vault_changes.summary'] }}</p>
+            <button id="vault-update-links" class="primary-action" type="button">{{ translations['vault_changes.update'] }}</button>
+            <button id="vault-continue-without-links" type="button">{{ translations['vault_changes.continue'] }}</button>
+            <button id="vault-cancel-sync" type="button">{{ translations['vault_changes.cancel'] }}</button>
+        </dialog>
+        <dialog id="save-export-profile-modal" aria-labelledby="save-export-profile-title">
+            <h2 id="save-export-profile-title">{{ translations['profile.save_title'] }}</h2>
+            <label for="export-profile-name">{{ translations['profile.name'] }}</label>
+            <input type="text" id="export-profile-name">
+            <button id="confirm-save-export-profile" type="button">{{ translations['profile.save'] }}</button>
+            <button id="cancel-save-export-profile" type="button">{{ translations['profile.cancel'] }}</button>
+        </dialog>
+        <dialog id="load-export-profile-modal" aria-labelledby="load-export-profile-title">
+            <h2 id="load-export-profile-title">{{ translations['profile.load_title'] }}</h2>
+            <div id="export-profile-list"></div>
+            <div id="export-profile-details"></div>
+            <button id="apply-export-profile" type="button" disabled>{{ translations['profile.apply'] }}</button>
+            <button id="delete-export-profile" type="button" disabled>{{ translations['profile.delete'] }}</button>
+            <button id="cancel-load-export-profile" type="button">{{ translations['profile.cancel'] }}</button>
+        </dialog>
+    </main>
+</body>
+</html>

@@ -69,7 +69,7 @@
                     <header class="about-modal-header">
                         <div>
                             <h2 id="about-modal-title">OAI-Processor</h2>
-                            <p id="about-version"></p>
+                            <p id="about-version">{{ "Versión" if language == "es" else "Version" }} 1.0.5</p>
                         </div>
 
                         <button id="about-close"
@@ -78,11 +78,14 @@
                             aria-label="{{ translations['about.close'] }}">×</button>
                     </header>
 
-                    <p id="about-modal-description"></p>
+                    <p id="about-modal-description">{{ "Aplicación local para procesar y exportar conversaciones y recursos de ChatGPT a Obsidian y HTML." if language == "es" else "Application locale pour traiter et exporter les conversations et ressources ChatGPT vers Obsidian et HTML." if language == "fr" else "Local application for processing and exporting ChatGPT conversations and resources to Obsidian and HTML." }}</p>
 
-                    <div id="about-links"></div>
+                    <div id="about-links">
+                        <p><a href="https://github.com/CorrosionLabs/OAI-processor" target="_blank" rel="noopener noreferrer">{{ "Repositorio" if language == "es" else "Dépôt GitHub" if language == "fr" else "Project repository" }}</a></p>
+                        <p><a href="https://corrosionlabs.github.io/documentation/OAI-processor/" target="_blank" rel="noopener noreferrer">{{ "Manual de usuario" if language == "es" else "Manuel d’utilisation" if language == "fr" else "User manual" }}</a></p>
+                    </div>
 
-                    <p class="about-modal-lab">Corrosion Labs</p>
+                    <p class="about-modal-lab"><a href="https://corrosionlabs.github.io/tools/" target="_blank" rel="noopener noreferrer" aria-label="Corrosion Labs · Tools"><img src="/static/img/marca_negra.svg" alt="Corrosion Labs" width="120" height="auto"></a></p>
 
                 </div>
             </div>
